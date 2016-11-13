@@ -9,6 +9,7 @@ end
 TOOL.Category = "Render"
 TOOL.Name = "World Material"
 TOOL.ClientConVar["override"] = "debug/env_cubemap_model"
+TOOL.ClientConVar["bumpmap_override"] = "models/props_pipes/GutterMetal01a"
 
 TOOL.Information = {
 	{
@@ -24,16 +25,33 @@ TOOL.Information = {
 
 TOOL.DefaultMaterials = TOOL.DefaultMaterials or {}
 
-function TOOL:LeftClick(trace)
-	local NewBase = GetConVarString("worldmaterial_override")
+local function BackupOld(TOOL, trace, convar, name, str)
+	local New = GetConVarString(convar)
 	local Current = Material(trace.HitTexture)
-	self.DefaultMaterials[trace.HitTexture] = self.DefaultMaterials[trace.HitTexture] or {}
-	self.DefaultMaterials[trace.HitTexture].Old = self.DefaultMaterials[trace.HitTexture].Old or Current:GetString("$basetexture")
-	self.DefaultMaterials[trace.HitTexture].New = NewBase
+	TOOL.DefaultMaterials[trace.HitTexture] = TOOL.DefaultMaterials[trace.HitTexture] or {}
+	TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] or Current:GetString(str)
+	TOOL.DefaultMaterials[trace.HitTexture]["New" .. name] = New
+
+	return New
+end
+
+local function RestoreOld(TOOL, trace, name, str)
+	if not TOOL.DefaultMaterials or not TOOL.DefaultMaterials[trace.HitTexture] or not TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] then return false end
+	local Old = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name]
+	local New = Material(trace.HitTexture)
+	New:SetTexture(str, Old)
+
+	return true
+end
+
+function TOOL:LeftClick(trace)
+	local New = BackupOld(self, trace, "worldmaterial_override", "Base", "$basetexture")
+	local BumNew = BackupOld(self, trace, "worldmaterial_bumpmap_override", "Bump", "$bumpmap")
 	local Newer = Material(trace.HitTexture)
 
-	timer.Simple(0.05, function()
-		Newer:SetTexture("$basetexture", NewBase)
+	timer.Simple(0.2, function()
+		Newer:SetTexture("$basetexture", New)
+		Newer:SetTexture("$bumpmap", BumNew)
 	end)
 
 	return true
@@ -46,10 +64,8 @@ end
 
 -- Reload reverts the material
 function TOOL:Reload(trace)
-	if not self.DefaultMaterials or not self.DefaultMaterials[trace.HitTexture] or not self.DefaultMaterials[trace.HitTexture].Old then return false end
-	local Old = self.DefaultMaterials[trace.HitTexture].Old
-	local New = Material(trace.HitTexture)
-	New:SetTexture("$basetexture", Old)
+	RestoreOld(self, trace, "Base", "$basetexture")
+	RestoreOld(self, trace, "Bump", "$bumpmap")
 
 	return true
 end
@@ -60,6 +76,7 @@ function TOOL.BuildCPanel(CPanel)
 	})
 
 	CPanel:MatSelect("worldmaterial_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
+	CPanel:MatSelect("worldmaterial_bumpmap_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
 end
 
 TOOL.BackupMaterial = Material("debug/debugwhite")
@@ -70,16 +87,13 @@ if CLIENT then
 end
 
 function TOOL:DrawToolScreen(width, height)
-
 	if self.CurrentMat ~= GetConVarString("worldmaterial_override") then
 		self.CurrentActiveMaterial = Material(GetConVarString("worldmaterial_override"))
 		self.CurrentMat = GetConVarString("worldmaterial_override")
 	end
 
-
 	surface.SetMaterial(self.CurrentActiveMaterial or self.BackupMaterial)
 	surface.SetDrawColor(255, 255, 255, 255)
-	surface.DrawTexturedRect(self.ScrollX, 0, width, height)
 	surface.DrawTexturedRect(0, 0, width, height)
-
+	surface.DrawTexturedRect(0, 0, width, height)
 end
