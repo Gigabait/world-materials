@@ -31,33 +31,39 @@ TOOL.Information = {
 
 TOOL.DefaultMaterials = TOOL.DefaultMaterials or {}
 
-local function BackupOld(TOOL, trace, convar, name, str, col)
+local function BackupOld(TOOL, trace, convar, name, str, color)
 	local New = GetConVarString(convar)
 	local Current = Material(trace.HitTexture)
 	TOOL.DefaultMaterials[trace.HitTexture] = TOOL.DefaultMaterials[trace.HitTexture] or {}
 	TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] or Current:GetString(str)
 	TOOL.DefaultMaterials[trace.HitTexture]["New" .. name] = New
+	TOOL.DefaultMaterials[trace.HitTexture]["$color"] = (1 / 255 * GetConVarString"worldmaterial_1_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_b")
+	TOOL.DefaultMaterials[trace.HitTexture]["$color2"] = (1 / 255 * GetConVarString"worldmaterial_2_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_b")
 
 	return New
 end
 
-local function RestoreOld(TOOL, trace, name, str, col)
+local function RestoreOld(TOOL, trace, name, str)
 	if not TOOL.DefaultMaterials or not TOOL.DefaultMaterials[trace.HitTexture] or not TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] then return false end
 	local Old = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name]
 	local New = Material(trace.HitTexture)
 	New:SetTexture(str, Old)
+	New:SetVector( "$color", Vector( "1 1 1") )
+	New:SetVector( "$color2", Vector( "1 1 1"))
+	TOOL.DefaultMaterials[trace.HitTexture]["New" .. name] = nil
 
 	return true
 end
 
 function TOOL:LeftClick(trace)
-	local New = BackupOld(self, trace, "worldmaterial_override", "Base", "$basetexture")
-	--local BumNew = BackupOld(self, trace, "worldmaterial_bumpmap_override", "Bump", "$bumpmap")
-	local Newer = Material(trace.HitTexture)
+	local NewTexture = BackupOld(self, trace, "worldmaterial_override", "Base", "$basetexture")
+	local TraceMaterial = Material(trace.HitTexture)
 
-	timer.Simple(0.2, function()
-		Newer:SetTexture("$basetexture", New)
-		--Newer:SetTexture("$bumpmap", BumNew)
+	timer.Simple(0.01, function()
+		TraceMaterial:SetTexture("$basetexture", NewTexture)
+		TraceMaterial:SetVector( "$color", Vector( (1 / 255 * GetConVarString"worldmaterial_1_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_b") ) )
+		TraceMaterial:SetVector( "$color2", Vector( (1 / 255 * GetConVarString"worldmaterial_2_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_b") ) )
+
 	end)
 
 	return true
@@ -65,22 +71,28 @@ end
 
 -- Right click copies the material
 function TOOL:RightClick(trace)
+	if SERVER then return end
+
+	if trace.HitTexture ~= "**displacement**" then
+		GetConVar("worldmaterial_override"):SetString(Material(trace.HitTexture):GetString("$basetexture"))
+
+		if CLIENT then
+			chat.AddText(Color(255, 128, 0), "Copied " .. GetConVar("worldmaterial_override"):GetString())
+		end
+	end
+
 	return true
 end
 
 -- Reload reverts the material
 function TOOL:Reload(trace)
 	RestoreOld(self, trace, "Base", "$basetexture")
-	--RestoreOld(self, trace, "Bump", "$bumpmap")
 
 	return true
 end
 
 function TOOL.BuildCPanel(CPanel)
-	CPanel:AddControl( "Color", { Label = "$color", Red = "worldmaterial_1_r", Green = "worldmaterial_1_g", Blue = "worldmaterial_1_b"} )
-	CPanel:AddControl( "Color", { Label = "$color2", Red = "worldmaterial_2_r", Green = "worldmaterial_2_g", Blue = "worldmaterial_2_b"} )
-	CPanel:MatSelect("worldmaterial_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
-	--CPanel:MatSelect("worldmaterial_bumpmap_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
+	WorldMaterialBuildPanel(CPanel)
 end
 
 TOOL.BackupMaterial = Material("debug/debugwhite")
@@ -96,8 +108,9 @@ function TOOL:DrawToolScreen(width, height)
 		self.CurrentMat = GetConVarString("worldmaterial_override")
 	end
 
+	surface.SetDrawColor(Color(255, 255, 255))
+	surface.DrawRect(0, 0, width, height)
 	surface.SetMaterial(self.CurrentActiveMaterial or self.BackupMaterial)
 	surface.SetDrawColor(255, 255, 255, 255)
-	surface.DrawTexturedRect(0, 0, width, height)
 	surface.DrawTexturedRect(0, 0, width, height)
 end
