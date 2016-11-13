@@ -10,6 +10,12 @@ TOOL.Category = "Render"
 TOOL.Name = "World Material"
 TOOL.ClientConVar["override"] = "debug/env_cubemap_model"
 TOOL.ClientConVar["bumpmap_override"] = "models/props_pipes/GutterMetal01a"
+TOOL.ClientConVar["1_r"] = "255"
+TOOL.ClientConVar["1_g"] = "255"
+TOOL.ClientConVar["1_b"] = "255"
+TOOL.ClientConVar["2_r"] = "255"
+TOOL.ClientConVar["2_g"] = "255"
+TOOL.ClientConVar["2_b"] = "255"
 
 TOOL.Information = {
 	{
@@ -25,7 +31,7 @@ TOOL.Information = {
 
 TOOL.DefaultMaterials = TOOL.DefaultMaterials or {}
 
-local function BackupOld(TOOL, trace, convar, name, str)
+local function BackupOld(TOOL, trace, convar, name, str, col)
 	local New = GetConVarString(convar)
 	local Current = Material(trace.HitTexture)
 	TOOL.DefaultMaterials[trace.HitTexture] = TOOL.DefaultMaterials[trace.HitTexture] or {}
@@ -35,7 +41,7 @@ local function BackupOld(TOOL, trace, convar, name, str)
 	return New
 end
 
-local function RestoreOld(TOOL, trace, name, str)
+local function RestoreOld(TOOL, trace, name, str, col)
 	if not TOOL.DefaultMaterials or not TOOL.DefaultMaterials[trace.HitTexture] or not TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] then return false end
 	local Old = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name]
 	local New = Material(trace.HitTexture)
@@ -46,12 +52,12 @@ end
 
 function TOOL:LeftClick(trace)
 	local New = BackupOld(self, trace, "worldmaterial_override", "Base", "$basetexture")
-	local BumNew = BackupOld(self, trace, "worldmaterial_bumpmap_override", "Bump", "$bumpmap")
+	--local BumNew = BackupOld(self, trace, "worldmaterial_bumpmap_override", "Bump", "$bumpmap")
 	local Newer = Material(trace.HitTexture)
 
 	timer.Simple(0.2, function()
 		Newer:SetTexture("$basetexture", New)
-		Newer:SetTexture("$bumpmap", BumNew)
+		--Newer:SetTexture("$bumpmap", BumNew)
 	end)
 
 	return true
@@ -65,18 +71,16 @@ end
 -- Reload reverts the material
 function TOOL:Reload(trace)
 	RestoreOld(self, trace, "Base", "$basetexture")
-	RestoreOld(self, trace, "Bump", "$bumpmap")
+	--RestoreOld(self, trace, "Bump", "$bumpmap")
 
 	return true
 end
 
 function TOOL.BuildCPanel(CPanel)
-	CPanel:AddControl("Header", {
-		Description = "Set the World's materials!"
-	})
-
+	CPanel:AddControl( "Color", { Label = "$color", Red = "worldmaterial_1_r", Green = "worldmaterial_1_g", Blue = "worldmaterial_1_b"} )
+	CPanel:AddControl( "Color", { Label = "$color2", Red = "worldmaterial_2_r", Green = "worldmaterial_2_g", Blue = "worldmaterial_2_b"} )
 	CPanel:MatSelect("worldmaterial_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
-	CPanel:MatSelect("worldmaterial_bumpmap_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
+	--CPanel:MatSelect("worldmaterial_bumpmap_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
 end
 
 TOOL.BackupMaterial = Material("debug/debugwhite")
