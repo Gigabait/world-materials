@@ -32,7 +32,7 @@ TOOL.Information = {
 TOOL.DefaultMaterials = TOOL.DefaultMaterials or {}
 
 local function BackupOld(TOOL, trace, convar, name, str, color)
-	local New = GetConVarString(convar)
+	local New = Material( GetConVarString(convar) ):GetString("$basetexture")
 	local Current = Material(trace.HitTexture)
 	TOOL.DefaultMaterials[trace.HitTexture] = TOOL.DefaultMaterials[trace.HitTexture] or {}
 	TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] or Current:GetString(str)
@@ -60,6 +60,7 @@ function TOOL:LeftClick(trace)
 	local TraceMaterial = Material(trace.HitTexture)
 
 	timer.Simple(0.01, function()
+		if not NewTexture then local C = CLIENT and chat.AddText(Color(255,128,0), "Texture error") return end
 		TraceMaterial:SetTexture("$basetexture", NewTexture)
 		TraceMaterial:SetVector( "$color", Vector( (1 / 255 * GetConVarString"worldmaterial_1_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_b") ) )
 		TraceMaterial:SetVector( "$color2", Vector( (1 / 255 * GetConVarString"worldmaterial_2_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_b") ) )
