@@ -39,7 +39,3 @@ function WorldMaterialBuildPanel( CPanel )
     --CPanel:MatSelect("worldmaterial_bumpmap_override", list.Get("OverrideMaterials"), true, 0.25, 0.25)
 end
 
-function HitTexture()
-    return Material( LocalPlayer():GetEyeTrace().HitTexture )
-end
-print( Vector( tostring( HitTexture():GetVector("$color") )) )

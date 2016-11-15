@@ -4,6 +4,7 @@ if CLIENT then
 	language.Add("tool.worldmaterial.left", "Override the current texture.")
 	language.Add("tool.worldmaterial.right", "Copy the current texture")
 	language.Add("tool.worldmaterial.reload", "Reset the current maptexture")
+	language.Add("tool.worldmaterial.e", "Change mode")
 end
 
 TOOL.Category = "Render"
@@ -26,48 +27,18 @@ TOOL.Information = {
 	},
 	{
 		name = "reload"
-	}
+	},
+	{
+		name = "e", icon = "gui/e.png",
+	},
 }
 
-TOOL.DefaultMaterials = TOOL.DefaultMaterials or {}
 
-local function BackupOld(TOOL, trace, convar, name, str, color)
-	local New = Material( GetConVarString(convar) ):GetString("$basetexture")
-	local Current = Material(trace.HitTexture)
-	TOOL.DefaultMaterials[trace.HitTexture] = TOOL.DefaultMaterials[trace.HitTexture] or {}
-	TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] or Current:GetString(str)
-	TOOL.DefaultMaterials[trace.HitTexture]["New" .. name] = New
-	TOOL.DefaultMaterials[trace.HitTexture]["$color"] = (1 / 255 * GetConVarString"worldmaterial_1_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_b")
-	TOOL.DefaultMaterials[trace.HitTexture]["$color2"] = (1 / 255 * GetConVarString"worldmaterial_2_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_b")
-
-	return New
-end
-
-local function RestoreOld(TOOL, trace, name, str)
-	if not TOOL.DefaultMaterials or not TOOL.DefaultMaterials[trace.HitTexture] or not TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name] then return false end
-	local Old = TOOL.DefaultMaterials[trace.HitTexture]["Old" .. name]
-	local New = Material(trace.HitTexture)
-	New:SetTexture(str, Old)
-	New:SetVector( "$color", Vector( "1 1 1") )
-	New:SetVector( "$color2", Vector( "1 1 1"))
-	TOOL.DefaultMaterials[trace.HitTexture]["New" .. name] = nil
-
-	return true
-end
 
 function TOOL:LeftClick(trace)
-	local NewTexture = BackupOld(self, trace, "worldmaterial_override", "Base", "$basetexture")
-	local TraceMaterial = Material(trace.HitTexture)
-
-	timer.Simple(0.01, function()
-		if not NewTexture then local C = CLIENT and chat.AddText(Color(255,128,0), "Texture error") return end
-		TraceMaterial:SetTexture("$basetexture", NewTexture)
-		TraceMaterial:SetVector( "$color", Vector( (1 / 255 * GetConVarString"worldmaterial_1_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_1_b") ) )
-		TraceMaterial:SetVector( "$color2", Vector( (1 / 255 * GetConVarString"worldmaterial_2_r") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_g") .. " " .. (1 / 255 * GetConVarString"worldmaterial_2_b") ) )
-
-	end)
-
-	return true
+	if CLIENT then return true end
+	WorldMaterials:Set( trace, self:GetOwner():GetInfo("worldmaterial_override"), "$basetexture",self:GetOwner()) 
+	WorldMaterials:Set( trace, self:GetOwner():GetInfo("worldmaterial_bumpmap_override"), "$bumpmap",self:GetOwner()) 
 end
 
 -- Right click copies the material
@@ -76,18 +47,16 @@ function TOOL:RightClick(trace)
 
 	if trace.HitTexture ~= "**displacement**" then
 		GetConVar("worldmaterial_override"):SetString(Material(trace.HitTexture):GetString("$basetexture"))
-
-		if CLIENT then
-			chat.AddText(Color(255, 128, 0), "Copied " .. GetConVar("worldmaterial_override"):GetString())
-		end
+		chat.AddText(Color(255, 128, 0), "Copied " .. GetConVar("worldmaterial_override"):GetString())
 	end
-
-	return true
 end
 
 -- Reload reverts the material
 function TOOL:Reload(trace)
-	RestoreOld(self, trace, "Base", "$basetexture")
+	if CLIENT then return end
+	
+	WorldMaterials:Restore( trace, "$basetexture", self:GetOwner() )
+	WorldMaterials:Restore( trace, "$bumpmap", self:GetOwner() )
 
 	return true
 end
@@ -115,3 +84,15 @@ function TOOL:DrawToolScreen(width, height)
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.DrawTexturedRect(0, 0, width, height)
 end
+if SERVER then return end
+local w, h = ScrW(), ScrH()
+
+TOOL.ColorA = Color( 76, 78, 96 )
+TOOL.ColorB = Color( 249, 118, 76 )
+
+
+
+-- function TOOL:DrawHUD()
+-- 	draw.RoundedBox( 0, w - 5 - w/5, 5, w/5, 300, self.ColorA )
+-- 	draw.RoundedBox( 0, w - 5 - w/5, 5, w/5, 25, self.ColorB )
+-- end
