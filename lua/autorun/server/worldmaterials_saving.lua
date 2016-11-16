@@ -27,13 +27,15 @@ end
 function WorldMaterials:Set( trace, clientvar, var, pl )
 	self:Backup( trace, var )
 
-	local MaterialVerify = Material( clientvar )
-	if MaterialVerify:IsError() then 
+	local MaterialVerify = Material( clientvar ) or clientvar
+	if MaterialVerify.IsError and MaterialVerify:IsError() then 
 		pl:SendLua( "chat.PlaySound() chat.AddText( Color( 255, 128, 0 ), 'Invalid texture for " .. var .. "') ")
 		return
 	end
 
 	local STORE = WorldMaterialTypes()[ var ][ "store" ]( clientvar )
+
+	--WorldMaterials.Active[  ] = {}
 
 	if not STORE then 
 		pl:SendLua( "chat.PlaySound() chat.AddText( Color( 255, 128, 0 ), 'Invalid texture for " .. var .. "') ")
@@ -54,6 +56,7 @@ function WorldMaterials:Restore( trace, var )
 	net.Start("worldmaterials_restore")
 	net.WriteString( HITNAME )
 	net.WriteTable( self.Defaults[ HITNAME ] )
+	net.WriteString( var )
 	net.Broadcast()
 end
 

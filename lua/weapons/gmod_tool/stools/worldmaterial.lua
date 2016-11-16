@@ -10,13 +10,15 @@ end
 TOOL.Category = "Render"
 TOOL.Name = "World Material"
 TOOL.ClientConVar["override"] = "debug/env_cubemap_model"
-TOOL.ClientConVar["bumpmap_override"] = "models/props_pipes/GutterMetal01a"
 TOOL.ClientConVar["1_r"] = "255"
 TOOL.ClientConVar["1_g"] = "255"
 TOOL.ClientConVar["1_b"] = "255"
 TOOL.ClientConVar["2_r"] = "255"
 TOOL.ClientConVar["2_g"] = "255"
 TOOL.ClientConVar["2_b"] = "255"
+TOOL.ClientConVar["basetexture_copy"] = "1"
+TOOL.ClientConVar["basetexture_reset"] = "1"
+TOOL.ClientConVar["basetexture_set"] = "1"
 
 TOOL.Information = {
 	{
@@ -29,16 +31,23 @@ TOOL.Information = {
 		name = "reload"
 	},
 	{
-		name = "e", icon = "gui/e.png",
-	},
+		name = "e",
+		icon = "gui/e.png"
+	}
 }
 
+local function Ticked(pl, str, action)
+	if SERVER then return pl:GetInfoNum("worldmaterial_" .. str .. "_" .. action, 0) == 1 or false end
 
+	return GetConVar("worldmaterial_" .. str .. "_" .. action):GetInt() == 1 or false
+end
 
 function TOOL:LeftClick(trace)
 	if CLIENT then return true end
-	WorldMaterials:Set( trace, self:GetOwner():GetInfo("worldmaterial_override"), "$basetexture",self:GetOwner()) 
-	WorldMaterials:Set( trace, self:GetOwner():GetInfo("worldmaterial_bumpmap_override"), "$bumpmap",self:GetOwner()) 
+
+	if Ticked(self:GetOwner(), "basetexture", "set") then
+		WorldMaterials:Set(trace, self:GetOwner():GetInfo("worldmaterial_override"), "$basetexture", self:GetOwner())
+	end
 end
 
 -- Right click copies the material
@@ -46,22 +55,30 @@ function TOOL:RightClick(trace)
 	if SERVER then return end
 
 	if trace.HitTexture ~= "**displacement**" then
-		GetConVar("worldmaterial_override"):SetString(Material(trace.HitTexture):GetString("$basetexture"))
-		chat.AddText(Color(255, 128, 0), "Copied " .. GetConVar("worldmaterial_override"):GetString())
+		if Ticked(self:GetOwner(), "basetexture", "copy") then
+			GetConVar("worldmaterial_override"):SetString(Material(trace.HitTexture):GetString("$basetexture"))
+			chat.AddText(Color(255, 128, 0), "Copied basetexture " .. GetConVar("worldmaterial_override"):GetString())
+		end
 	end
 end
 
 -- Reload reverts the material
 function TOOL:Reload(trace)
 	if CLIENT then return end
+
+	if Ticked(self:GetOwner(), "basetexture", "reset") then
+		WorldMaterials:Restore(trace, "$basetexture", self:GetOwner())
+	end
 	
-	WorldMaterials:Restore( trace, "$basetexture", self:GetOwner() )
-	WorldMaterials:Restore( trace, "$bumpmap", self:GetOwner() )
 
 	return true
 end
 
 function TOOL.BuildCPanel(CPanel)
+	CPanel.vars = {
+		["$basetexture"] = "basetexture",
+	}
+
 	WorldMaterialBuildPanel(CPanel)
 end
 
@@ -84,15 +101,13 @@ function TOOL:DrawToolScreen(width, height)
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.DrawTexturedRect(0, 0, width, height)
 end
+
 if SERVER then return end
 local w, h = ScrW(), ScrH()
+TOOL.ColorA = Color(76, 78, 96, 150)
+TOOL.ColorB = Color(249, 118, 76)
 
-TOOL.ColorA = Color( 76, 78, 96 )
-TOOL.ColorB = Color( 249, 118, 76 )
-
-
-
--- function TOOL:DrawHUD()
--- 	draw.RoundedBox( 0, w - 5 - w/5, 5, w/5, 300, self.ColorA )
--- 	draw.RoundedBox( 0, w - 5 - w/5, 5, w/5, 25, self.ColorB )
--- end
+function TOOL:DrawHUD()
+	draw.RoundedBox(0, w - 5 - w / 5, 5, w / 5, 300, self.ColorA)
+	draw.RoundedBox(0, w - 5 - w / 5, 5, w / 5, 25, self.ColorB)
+end

@@ -16,14 +16,6 @@ function( mat, res )
 	mm:SetTexture( "$basetexture", res )
 end)
 
-MaterialType( "$bumpmap", function( tex )
-	local mat = Material( tex )
-	return mat:GetString( "$bumpmap" )
-end,
-function( mat, res )
-	local mm = Material( mat )
-	mm:SetTexture( "$bumpmap", res )
-end)
 
 function WorldMaterialTypes()
 	return WorldMaterialDatatypes

@@ -4,8 +4,10 @@ net.Receive( "worldmaterials_restore", function()
     local str = net.ReadString()
     local tab = net.ReadTable()
     local tvd = WorldMaterialTypes()
+    local var = net.ReadString()
     for k, v in pairs( tab ) do 
         if not tvd[ k ] then continue end
+        if k ~= var then continue end
         tvd[ k ][ "restore" ]( str, v )
     end
 end)
